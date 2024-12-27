@@ -11,53 +11,98 @@ Although several methods can be used for quantification, we recommend using Salm
 __Snippet 1.__ Code for creating the Salmon index and quantification.
 
 ```bash
-  ##########
-  # STEP 1. Generate a transcript-to-gene mapping file
-  # we provide script make_t2g.py script to help with this.
+#!/bin/bash
 
-  TRANSCRIPTOME="Homo_sapiens.GRCh38.cdna.all.fa"
-  
-  grep ">" "$TRANSCRIPTOME" | python make_t2g.py > t2g.txt
+# Grab today's date
+DATE=$(date +%Y-%m-%d)
+SUFFIX="_PBMC_R1.fq.gz"
 
-  ##########
-  # STEP 2. The reference transcriptome is then indexed
-  # in the canonical way needed for Salmon
+##########
+# STEP 1: Generate a transcript-to-gene mapping file
+# The `make_t2g.py` script is used to create this file.
 
-  INDEXFILE="${TRANSCRIPTOME/.fa/idx"
+TRANSCRIPTOME="Homo_sapiens.GRCh38.cdna.all.fa"
 
-  salmon index -t "$TRANSCRIPTOME"  -i "$INDEXFILE"
+# Check if the transcriptome file exists
+if [[ ! -f "$TRANSCRIPTOME" ]]; then
+  echo "Error: Transcriptome file $TRANSCRIPTOME not found."
+  exit 1
+fi
 
-  ##########
-  # STEP 3. Quantify libraries with Salmon Alevin
+grep ">" "$TRANSCRIPTOME" | python make_t2g.py > t2g.txt
+echo "Transcript-to-gene mapping file created: t2g.txt"
 
-  # The code is designed to process multiple FASTQ files
-  # but it should equally work with a single pair of files
+##########
+# STEP 2: Index the reference transcriptome
+# Salmon requires an index to be generated from the transcriptome.
 
-  # Construct the lists of barcode and read files
-  BARCODES_FILES=()
-  READS_FILES=()
-  # Adjust suffix if needed (_PBMC_R1.fq.gz)
-  for BARCODES in ${DIR}/*_PBMC_R1.fq.gz; do
-      BARCODES_FILES+=("$BARCODES")
-      READS="${BARCODES%_R1.fq.gz}_R2.fq.gz"
-      READS_FILES+=("$READS")
-  done
+TRANSCRIPTOME_IDX="${TRANSCRIPTOME/.fa/.idx}"
 
-  # Run Salmon Alevin for each pair
-  for i in "${!BARCODES_FILES[@]}"; do
-      OUTPUT_DIR="${HOME}/alevin_output_241020_PBMC4k_${i}"
+salmon index -t "$TRANSCRIPTOME" -i "$TRANSCRIPTOME_IDX"
+if [[ $? -ne 0 ]]; then
+  echo "Error: Failed to generate Salmon index."
+  exit 1
+fi
+echo "Salmon index created at $TRANSCRIPTOME_IDX"
 
-      singularity exec --bind "${DIR}:${DIR}" "${DIR}/${SIF}" salmon alevin -l ISR \
-          -i "${TRANSCRIPTOME_IDX}" \
-          -1 "${BARCODES_FILES[$i]}" \
-          -2 "${READS_FILES[$i]}" \
-          -o "${OUTPUT_DIR}" \
-          --tgMap "${TGMAP}" \
-          --dumpFeatures \
-          --dumpUmiGraph \
-          --chromium \
-          --dumpMtx \
-          -p 24
-  done
+##########
+# STEP 3: Quantify libraries with Salmon Alevin
+# This section processes multiple FASTQ files (or a single pair).
 
+# Ensure the directory containing FASTQ files is defined
+DIR="./fastq_files"  # Replace with your FASTQ directory
+if [[ ! -d "$DIR" ]]; then
+  echo "Error: Directory $DIR not found."
+  exit 1
+fi
+
+# Construct the lists of barcode and read files
+BARCODES_FILES=()
+READS_FILES=()
+for BARCODES in "$DIR"/*"$SUFFIX"; do
+  if [[ -f "$BARCODES" ]]; then
+    BARCODES_FILES+=("$BARCODES")
+    READS="${BARCODES/R1/R2}"  # Replace R1 with R2 for paired-end reads
+    READS_FILES+=("$READS")
+  else
+    echo "Warning: No files matching $SUFFIX found in $DIR."
+  fi
+done
+
+# Ensure there are files to process
+if [[ ${#BARCODES_FILES[@]} -eq 0 ]]; then
+  echo "Error: No FASTQ files found for processing."
+  exit 1
+fi
+
+# Run Salmon Alevin for each pair of FASTQ files
+TGMAP="t2g.txt"  # Path to the transcript-to-gene mapping file
+for i in "${!BARCODES_FILES[@]}"; do
+  OUTPUT_DIR="alevin_output_${DATE}_${i}"
+  salmon alevin -l ISR \
+      -i "$TRANSCRIPTOME_IDX" \
+      -1 "${BARCODES_FILES[$i]}" \
+      -2 "${READS_FILES[$i]}" \
+      -o "$OUTPUT_DIR" \
+      --tgMap "$TGMAP" \
+      --dumpFeatures \
+      --dumpUmiGraph \
+      --chromium \
+      --dumpMtx \
+      -p 8
+
+  if [[ $? -ne 0 ]]; then
+    echo "Error: Salmon Alevin failed for ${BARCODES_FILES[$i]} and ${READS_FILES[$i]}"
+    exit 1
+  fi
+  echo "Processed: ${BARCODES_FILES[$i]} and ${READS_FILES[$i]}"
+  echo "Output directory: $OUTPUT_DIR"
+done
+
+echo "Salmon Alevin processing completed for all libraries."
+
+# Note:
+# The flag `--chromium` must be adjusted if libraries were not generated
+# using 10X Genomics v3 chemistry.
 ```
+
