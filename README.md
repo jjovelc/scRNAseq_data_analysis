@@ -276,3 +276,52 @@ adata = adata[
     (adata.obs["total_counts"] < 25000)
 ]
 ```
+
+__Snippet 9.__ R code to detect and remove doublets.
+
+```R
+# Doublet diagnostics
+# propose the number of doublets to find
+# For 10X v3 chemistry 7.5% is appropriate
+nExp_poi <- round(0.075 * ncol(object))
+
+# Run DoubletFinder
+object <- doubletFinder(object, PCs = 1:30, pN = 0.25, pK = 0.09, nExp = nExp_poi)
+
+# Subset the Seurat object to exclude doublets
+# Explore Seurat object to find out the exact 
+# DF.classifications name, in this case
+# DF.classifications_0.25_0.09_132
+object <- subset(object, subset = DF.classifications_0.25_0.09_132 == "Singlet")
+
+# Verify the result
+table(pbmc@meta.data$DF.classifications_0.25_0.09_132)
+
+```
+
+__Snippet 10.__ Python code to detect and remove doublets.
+
+```Python
+# Detect doublets
+# Doublet detection using Scrublet
+adata.layers["counts"] = adata.X.copy()  # Save count data before normalization
+
+# If the data is in sparse format, convert it to a dense matrix
+counts_matrix = adata.X.toarray() if scipy.sparse.issparse(adata.X) else adata.X
+
+# Initialize Scrublet
+scrub = scr.Scrublet(counts_matrix)
+
+# Run Scrublet
+doublet_scores, predicted_doublets = scrub.scrub_doublets()
+
+# Plot doublets results
+# Add the results back to the AnnData object
+adata.obs["doublet_scores"] = doublet_scores
+adata.obs["predicted_doublets"] = predicted_doublets.astype(str)  # Ensure boolean values are converted to strings for visualization
+
+adata = adata[adata.obs["predicted_doublets"] == "False", :]
+```
+
+__Snippet 11.__ Data preprocessing in Seurat (R).
+__Snippet 12.__ Data preprocessing in Scanpy (Python).
