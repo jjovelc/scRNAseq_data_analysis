@@ -106,7 +106,26 @@ echo "Salmon Alevin processing completed for all libraries."
 # using 10X Genomics v3 chemistry.
 ```
 
-__Snippet 2.__ R code to import Salmon Alevin quantification matrix.
+__Snippet 2.__ R Code to run QC analysis of the Alevin quentification.
+
+```R
+library(alevinQC)
+
+### Set the working directory
+working_dir <- '/your/directory/'
+
+setwd(working_dir)
+dir <- getwd()
+
+alevinQCReport(baseDir = dir,               # Directory containing folder alevin
+               sampleId = "pbmc4k",         # Add any sample name you like
+               outputFile = "alevinReport.html",   # Name of the output file
+               outputFormat = "html_document",     # Format of the output file
+               outputDir = dir,                    # Directory where you want to save the report
+               forceOverwrite = TRUE)
+```
+
+__Snippet 3.__ R code to import Salmon Alevin quantification matrix.
 
 ```R
 library(tximport)
@@ -133,7 +152,7 @@ data <- txi$counts
 
 ```
 
-__Snippet 3.__ Python (Scanpy) code to import Salmon Alevin quantification matrix.
+__Snippet 4.__ Python (Scanpy) code to import Salmon Alevin quantification matrix.
 
 ```python
 # Set the working directory
@@ -175,4 +194,85 @@ if all(os.path.exists(f) for f in [matrix_file, genes_file, barcodes_file]):
     print(adata.obs_names[:5])
 else:
     raise FileNotFoundError("One or more required files are missing. Please check your directory.")
+```
+
+__Snippet 5.__ Quality inspection using Seurat in R.
+
+```R
+# Create the Seurat object
+object <- CreateSeuratObject(counts = data, project = "pbmc4k")
+
+### QC ###
+object[["percent.mt"]] <- PercentageFeatureSet(object, pattern = "^MT-")
+
+# QC metrics can be visualized in a violin plot
+VlnPlot(object, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, cols='dodgerblue')
+
+# FeatureScatter is typically used to visualize feature-feature relationships
+plot1 <- FeatureScatter(object, feature1 = "nCount_RNA", feature2 = "percent.mt", col='pink1')
+plot2 <- FeatureScatter(object, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", col='darkturquoise')
+plot1 + plot2
+```
+
+__Snippet 6.__ Quality inspection using Scanpy in Python.
+
+```Python
+# This assumes data is already in object adata as explained 
+# in Snippet 4.
+
+# Verify uniqueness in dataset
+n_duplicates = sum(adata.obs_names.duplicated())
+
+if n_duplicates > 0:
+    print(f"Warning: {n_duplicates} duplicate observations found in combined dataset")
+    adata.obs_names_make_unique()
+
+# Determine some QC parameters
+# mitochondrial genes, "MT-" for human, "Mt-" for mouse
+# Adjust mitochondrial gene identification for mouse data
+adata.var["mt"] = adata.var_names.str.startswith(("MT-"))
+
+# ribosomal genes
+adata.var["ribo"] = adata.var_names.str.startswith(("RPS", "RPL"))
+
+sc.pp.calculate_qc_metrics(
+adata, qc_vars=["mt", "ribo"], inplace=True, log1p=True
+)
+
+output_file = "_plot_beforeFiltering.png"
+sc.pl.violin(
+    adata,
+    ["n_genes_by_counts", "total_counts", "pct_counts_mt"],
+    jitter=0.4,
+    color="violet",
+    size=2,
+    multi_panel=True,
+    save=output_file
+  
+)
+
+```
+
+__Snippet 7.__ R code to filter cells according to number of genes, total RNA and percent mt.
+
+```R
+# Filter
+object <- subset(object, subset = nFeature_RNA > 200 & 
+                 nFeature_RNA < 6000 & 
+                 percent.mt < 5 &
+                 nCount_RNA < 25000)
+
+```
+
+__Snippet 8.__ Python code to filter cells according to number of genes, total RNA and percent mt.
+
+```Python
+# Filter data according to QC metrics
+
+adata = adata[
+    (adata.obs["pct_counts_mt"] < 5) &
+    (adata.obs["n_genes_by_counts"] < 6000) &
+    (adata.obs["n_genes_by_counts"] > 200) &
+    (adata.obs["total_counts"] < 25000)
+]
 ```
