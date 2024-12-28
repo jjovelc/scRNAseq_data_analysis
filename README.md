@@ -324,4 +324,50 @@ adata = adata[adata.obs["predicted_doublets"] == "False", :]
 ```
 
 __Snippet 11.__ Data preprocessing in Seurat (R).
+
+```R
+# Normalize
+object <- NormalizeData(object, normalization.method = "LogNormalize", scale.factor = 10000)
+
+# Find variable features (genes that explain most of the variance)
+object <- FindVariableFeatures(object, selection.method = "vst", nfeatures = 2000)
+
+# Scale data
+# It initially divides the expression of each gene by its standard deviation (z-score)
+# For centering the data, the mean expression is substracted so that the data is centered
+# around zero
+object <- ScaleData(object, features = all.genes)
+
+# Run PCA analysis
+object <- RunPCA(object, features = VariableFeatures(object = object))
+
+# Determine the ‘dimensionality’ of the dataset by elbor plot
+ElbowPlot(object)
+```
+
 __Snippet 12.__ Data preprocessing in Scanpy (Python).
+
+```Python
+# Preserve raw data for DE analysis
+adata.raw = adata.copy()
+
+# Normalizing to median total counts
+sc.pp.normalize_total(adata, target_sum=1e4)
+
+# Logarithmize the data
+sc.pp.log1p(adata)
+
+# Feature selection (highly variable genes)
+sc.pp.highly_variable_genes(adata, n_top_genes=2000)
+sc.pl.highly_variable_genes(adata)
+
+# Run PCA and produce weights plot
+sc.tl.pca(adata)
+# Elbow plot
+output_file = "_elbow_plot.png"
+sc.pl.pca_variance_ratio(
+    adata,
+    n_pcs=50,
+    log=True,
+    save=output_file)
+```
