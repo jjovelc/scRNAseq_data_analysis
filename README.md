@@ -345,6 +345,9 @@ object <- RunPCA(object, features = VariableFeatures(object = object))
 
 # Determine the ‘dimensionality’ of the dataset by elbor plot
 ElbowPlot(object)
+
+# Produce PC loadings plot
+VizDimLoadings(pbmc, dims = 1:2, reduction = "pca")
 ```
 
 __Snippet 12.__ Data preprocessing in Scanpy (Python).
@@ -372,4 +375,65 @@ sc.pl.pca_variance_ratio(
     n_pcs=50,
     log=True,
     save=output_file)
+
+# Produce PC loadings plot
+sc.pl.pca_loadings(
+    adata,
+    components=[1, 2], 
+    show=True  
+)
+```
+
+__Snippet 13.__ Clustering of scRNAseq data using Seurat (R).
+
+```R
+# Find neighbors, using the first 10 PCs
+object <- FindNeighbors(object, dims = 1:10)
+
+# Conduct clustering. Leiden is implemented by default
+# to use Louvain add parameter 'algorithm = 1'
+object <- FindClusters(object, resolution = 0.8)
+
+# Run tSNE
+object <- RunTSNE(object, 
+                dims = 1:10,
+                perplexity = 30,    # default is 30
+                max_iter = 1000,    # default is 1000
+                theta = 0.5,        # learning rate, default is 0.5
+                seed.use = 42       # for reproducibility
+)
+
+# Create tSNE plot
+plot <- DimPlot(object, reduction = "tsne", label = TRUE)
+print(plot)
+
+# Run UMAP
+object <- RunUMAP(object, dims = 1:10)
+
+# Create UMAP plot
+plot <- DimPlot(object, reduction = "umap", label = TRUE)
+print(plot)
+```
+
+__Snippet 14.__ Clustering of scRNAseq data using Scanpy (Python).
+
+```Python
+# Use the first 10 PCs to compute the neighborhood graph
+sc.pp.neighbors(adata, n_pcs=10)
+
+# Perform clustering using the Leiden algorithm (default in Scanpy)
+# To use Louvain, pass `method='louvain'` to `sc.tl.leiden`
+sc.tl.leiden(adata, resolution=0.8)
+
+# Run tSNE
+sc.tl.tsne(adata, n_pcs=10, perplexity=30, use_rep='X_pca', random_state=42)
+
+# Plot tSNE with cluster labels
+sc.pl.tsne(adata, color='leiden', legend_loc='on data', save="_tsne_plot.png")
+
+# Run UMAP
+sc.tl.umap(adata)
+
+# Plot UMAP with cluster labels
+sc.pl.umap(adata, color='leiden', legend_loc='on data', save="_umap_plot.png")
 ```
