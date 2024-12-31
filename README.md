@@ -437,3 +437,83 @@ sc.tl.umap(adata)
 # Plot UMAP with cluster labels
 sc.pl.umap(adata, color='leiden', legend_loc='on data', save="_umap_plot.png")
 ```
+
+__Snippet 15.__ Cell classification with Seurat/Azimuth (R).
+
+```R
+
+# It assumes the data has been normalized, scaled, features have been selected,
+# Leiden clustering and UMAP run.
+
+library(Azimuth)
+
+# The RunAzimuth function can take a Seurat object as input
+object <- RunAzimuth(object, reference = "pbmcref")
+
+DimPlot(object, group.by = "predicted.celltype.l2", label = TRUE, label.size = 3) + NoLegend()
+
+```
+
+__Snippet 16.__ Cell classification with Scanpy/CellTypist (Python).
+
+```Python
+
+# It assumes the data has been normalized, scaled, features have been selected,
+# Leiden clustering and UMAP run.
+
+adata.X.expm1().sum(axis = 1)
+
+# Enabling `force_update = True` will overwrite existing (old) models.
+models.download_models(force_update = True)
+
+# Find out where models are stored
+models.models_path
+
+# List 
+! ls /root/.celltypist/data/models
+
+# Provide description of models
+models.models_description()
+
+# Load human pbmc model
+model = models.Model.load(model = 'Healthy_COVID19_PBMC.pkl')
+
+# Deploy a comprehensive description of the model
+model
+
+# List cell types comprissed in the model
+model.cell_types
+
+# Run predictions 
+predictions = celltypist.annotate(adata, model = 'Healthy_COVID19_PBMC.pkl', majority_voting = True)
+
+# Get an `AnnData` with predicted labels embedded into the cell metadata columns.
+adata = predictions.to_adata()
+
+# Using the igraph implementation and a fixed number of iterations can be significantly faster, especially for larger datasets
+sc.tl.leiden(adata, resolution=0.8, n_iterations=2)
+output_file = "_UMAP_afterClustering_plot_res0.8.png"
+sc.pl.umap(
+    adata,
+    color=["leiden"],
+    save=output_file,
+)
+
+sc.tl.leiden(adata, resolution=0.8, n_iterations=2)
+output_file = "_UMAP_afterClustering_plot_res0.8.png"
+sc.pl.umap(
+    adata,
+    color=["predicted_labels"],
+    save=output_file,
+)
+
+
+sc.tl.leiden(adata, resolution=0.8, n_iterations=2)
+output_file = "_UMAP_afterClustering_plot_res0.8.png"
+sc.pl.umap(
+    adata,
+    color=["majority_voting"],
+    save=output_file,
+)
+
+```
