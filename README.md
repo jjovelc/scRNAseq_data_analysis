@@ -517,3 +517,83 @@ sc.pl.umap(
 )
 
 ```
+
+__Snippet 17.__ Code for coducting differential expression analysis in Seurat
+
+```R
+# Ensure 'disease' is set as the active identity class
+Idents(covid) <- "disease"
+
+table(covid@meta.data$disease)
+
+# Perform differential expression analysis between COVID-19 and normal
+de_results <- FindMarkers(
+  object = covid,
+  ident.1 = "COVID-19",
+  ident.2 = "normal",
+  assay = "RNA", # Specify the RNA assay layer
+  slot = "data", # Use normalized data (change to "counts" if raw counts are desired)
+  test.use = "wilcox" # Choose the test (e.g., Wilcoxon by default)
+)
+
+# View the top differential expression results
+head(de_results)
+
+sign_res <- subset(de_results, abs(avg_log2FC) > 0.25 &  p_val_adj < 0.05)
+sign_res$gene <- rownames(sign_res)
+sign_res <- sign_res[, c('gene', colnames(sign_res)[1:(ncol(sign_res) - 1)])]
+nrow(sign_res)
+
+# Export all results
+write.table(de_results, "all_results_wilcox.tsv", sep = '\t', quote = F)
+
+
+# Export results
+write.table(sign_res, "DE_results_wilcox.tsv", sep = '\t', quote = F)
+```
+
+__Snippet 18.__ Code for coducting differential expression analysis in Scanpy
+
+```R
+import scanpy as sc
+import pandas as pd
+import numpy as np
+
+# Ensure 'disease' is the active groupby variable
+# Check the unique categories in the 'disease' metadata column
+print(adata.obs['disease'].value_counts())
+
+# Perform differential expression analysis between "COVID-19" and "normal"
+sc.tl.rank_genes_groups(
+    adata,
+    groupby='disease',          # Grouping variable
+    reference='normal',         # Reference group
+    method='wilcoxon',          # Statistical test (Wilcoxon by default)
+    use_raw=False,              # Use normalized data, not raw counts
+    key_added='rank_genes_disease' # Key for storing results in `adata.uns`
+)
+
+# View the top differential expression results
+sc.pl.rank_genes_groups(adata, key='rank_genes_disease', n_genes=10, sharey=False)
+
+# Extract differential expression results into a dataframe
+de_results = sc.get.rank_genes_groups_df(adata, group='COVID-19', key='rank_genes_disease')
+
+# Filter significant results
+sign_res = de_results[
+    (de_results['logfoldchanges'].abs() > 0.25) & 
+    (de_results['pvals_adj'] < 0.05)
+]
+
+# Add gene column (gene names are in the 'names' column by default)
+sign_res = sign_res.rename(columns={'names': 'gene'})
+
+# Export all results to a file
+de_results.to_csv("all_results_wilcox.tsv", sep='\t', index=False)
+
+# Export significant results to a file
+sign_res.to_csv("DE_results_wilcox.tsv", sep='\t', index=False)
+
+# Print number of significant results
+print(f"Number of significant results: {sign_res.shape[0]}")
+```
