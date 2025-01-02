@@ -597,3 +597,55 @@ sign_res.to_csv("DE_results_wilcox.tsv", sep='\t', index=False)
 # Print number of significant results
 print(f"Number of significant results: {sign_res.shape[0]}")
 ```
+
+__Snippet 19.__ Code for conducting gene ontology analysis with ClusterProfiler.
+
+```R
+# This code assumes that DE genes and the associated statistics are
+# in a dataframe called sign_res
+
+# Load required libraries
+library(clusterProfiler)
+library(org.Hs.eg.db)
+
+# Step 1: Partition the significant results
+upregulated_genes <- sign_res$gene[sign_res$avg_log2FC > 0]
+downregulated_genes <- sign_res$gene[sign_res$avg_log2FC < 0]
+
+# Step 2: Perform GO Enrichment Analysis for upregulated genes
+go_results_up <- enrichGO(
+  gene          = upregulated_genes,
+  OrgDb         = org.Hs.eg.db,
+  keyType       = "SYMBOL",
+  ont           = "MF",               # Ontology: Molecular Function
+  pAdjustMethod = "BH",
+  pvalueCutoff  = 0.05,
+  qvalueCutoff  = 0.05
+)
+
+# Perform GO Enrichment Analysis for downregulated genes
+go_results_down <- enrichGO(
+  gene          = downregulated_genes,
+  OrgDb         = org.Hs.eg.db,
+  keyType       = "SYMBOL",
+  ont           = "MF",               # Ontology: Molecular Function
+  pAdjustMethod = "BH",
+  pvalueCutoff  = 0.05,
+  qvalueCutoff  = 0.05
+)
+
+# Step 3: Visualize the results
+
+# Upregulated genes
+barplot(go_results_up, showCategory = 10, title = "Top 10 GO Terms (Upregulated - MF)")
+dotplot(go_results_up, showCategory = 10, title = "Upregulated Genes - MF")
+
+# Downregulated genes
+barplot(go_results_down, showCategory = 10, title = "Top 10 GO Terms (Downregulated - MF)")
+dotplot(go_results_down, showCategory = 10, title = "Downregulated Genes - MF")
+
+# Step 4: Optionally save results
+write.table(as.data.frame(go_results_up), "GO_results_upregulated.tsv", sep = '\t', quote = F, row.names = F)
+write.table(as.data.frame(go_results_down), "GO_results_downregulated.tsv", sep = '\t', quote = F, row.names = F)
+
+```
