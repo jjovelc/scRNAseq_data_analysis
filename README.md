@@ -4,7 +4,7 @@ This repo serves as a supplement of the publication with the title referenced ab
 
 Because of their popularity, we provide code using the frameworks Seurat (for R users) and Scanpy (for Python users), whenever we manage to get a working version of the code.
 
-Unless otherwise indicated, all examples presented hereafter are based on the 10X genomics dataset derived using the Single Cell 3' v3 chemistry named Parent_NGSC3_DI_PBMC. The dataset is described [here](https://cf.10xgenomics.com/samples/cell-exp/4.0.0/Parent_NGSC3_DI_PBMC/Parent_NGSC3_DI_PBMC_web_summary.html). 
+Unless otherwise indicated, all examples presented hereafter are based on the 10X genomics dataset derived using the Single Cell 3' v3 chemistry named Parent_NGSC3_DI_PBMC. The dataset is described [here](https://cf.10xgenomics.com/samples/cell-exp/4.0.0/Parent_NGSC3_DI_PBMC/Parent_NGSC3_DI_PBMC_web_summary.html). A second database used for cell classification and differential expression analysis is a random sample extracted from a PBMC COVID dataset described [here](https://pubmed.ncbi.nlm.nih.gov/34062119/) we will refer to that as PBMC-COVID.
 
 ## Quantification
 
